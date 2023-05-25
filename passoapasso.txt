@@ -1,0 +1,53 @@
+npm i -g @ionic/cli
+===================
+ionic start camApp blank --type=angular
+NgModules
+=========
+cd camApp
+code .
+======
+npm install @capacitor/camera @capacitor/preferences @capacitor/filesystem
+==========================================================================
+npm install @ionic/pwa-elements
+
+adicionar no main.ts
+import { defineCustomElements } from '@ionic/pwa-elements/loader';
+
+defineCustomElements(window);
+=============================
+ng add @angular/pwa
+Yes
+===
+ionic build --prod
+==================
+no home.page.html
+apagar tudo que esta dentro do content e adicionar
+<ion-fab vertical="bottom" horizontal="end" slot="fixed">
+    <ion-fab-button color="success">
+      <ion-icon name="camera"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
+============
+Apagar o @media do variables.scss
+=================================
+ionic g service services/foto
+=============================
+no foto.service.ts
+import { Camera, CameraResultType, CameraSource, Photo } from '@capacitor/camera';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Preferences } from '@capacitor/preferences';
+=====================================================
+criar nova pasta no app com o nome models
+criar novo arquivo dentro da pasta models com o nome Foto.interface.ts
+======================================================================
+adicionar no Foto.interface.ts
+export interface Foto {
+  filepath: string;
+  webviewPath?: string;
+}
+=======================
+adicionar dentro do export class FotoService do foto.service.ts
+  fotos: Foto[] = [];
+  private FOTO_ARMAZENAMENTO: string = 'fotos';
+
+
