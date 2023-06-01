@@ -1,7 +1,7 @@
 npm i -g @ionic/cli
 ===================
 ionic start camApp blank --type=angular
-NgModules
+Selecionar a opcao = NgModules
 =========
 cd camApp
 code .
@@ -33,21 +33,124 @@ Apagar o @media do variables.scss
 ionic g service services/foto
 =============================
 no foto.service.ts
-import { Camera, CameraResultType, CameraSource, Photo } from '@capacitor/camera';
+import { Injectable } from '@angular/core';
+import {Camera, CameraResultType, CameraSource, Photo} from '@capacitor/camera';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Preferences } from '@capacitor/preferences';
+import { Foto } from '../models/Foto.interface';
+import { Platform } from '@ionic/angular';
+import { Capacitor } from '@capacitor/core';
 =====================================================
 criar nova pasta no app com o nome models
 criar novo arquivo dentro da pasta models com o nome Foto.interface.ts
-======================================================================
+=======================================================================
 adicionar no Foto.interface.ts
 export interface Foto {
   filepath: string;
   webviewPath?: string;
 }
-=======================
+==============================================================================
 adicionar dentro do export class FotoService do foto.service.ts
   fotos: Foto[] = [];
   private FOTO_ARMAZENAMENTO: string = 'fotos';
+===============================================================================
+alterar o construtor do foto.service .ts e o restante logo abaixo
+constructor(private platform: Platform) { }
 
+public async carregarFotosSalvas() {
+    const listaFotos = await Preferences.get({ key: this.FOTO_ARMAZENAMENTO });
+    this.fotos = JSON.parse(listaFotos.value as string) || [];
 
+    if (!this.platform.is('hybrid')) {
+      for (let foto of this.fotos) {
+        const readFile = await Filesystem.readFile({
+          path: foto.filepath,
+          directory: Directory.Data,
+        });
+
+        foto.webviewPath = `data:image/jpeg;base64,${readFile.data}`;
+      }
+    }
+  }
+
+  public async tirarFoto() {
+    const fotoCapturada = await Camera.getPhoto({
+      resultType: CameraResultType.Uri, // dados baseados em arquivos; oferece o melhor desempenho
+      source: CameraSource.Camera, // tirar automaticamente uma nova foto com a câmera
+      quality: 100,
+    });
+
+    const salvarArquivoFoto = await this.salvarFoto(fotoCapturada);
+
+    this.fotos.unshift(salvarArquivoFoto);
+
+    Preferences.set({
+      key: this.FOTO_ARMAZENAMENTO,
+      value: JSON.stringify(this.fotos),
+    });
+  }
+
+  private async salvarFoto(foto: Photo) {
+    const base64Data = await this.readAsBase64(foto);
+
+    const nomeArquivo = new Date().getTime() + '.jpeg';
+    const arquivoSalvo = await Filesystem.writeFile({
+      path: nomeArquivo,
+      data: base64Data,
+      directory: Directory.Data,
+    });
+
+    if (this.platform.is('hybrid')) {
+      return {
+        filepath: arquivoSalvo.uri,
+        webviewPath: Capacitor.convertFileSrc(arquivoSalvo.uri),
+      };
+    } else {
+      return {
+        filepath: nomeArquivo,
+        webviewPath: foto.webPath,
+      };
+    }
+  }
+
+  private async readAsBase64(foto: Photo) {
+    if (this.platform.is('hybrid')) {
+      const arquivo = await Filesystem.readFile({
+        path: foto.path as string,
+      });
+
+      return arquivo.data;
+    } else {
+      const resposta = await fetch(foto.webPath!);
+      const blob = await resposta.blob();
+
+      return (await this.convertBlobToBase64(blob)) as string;
+    }
+  }
+
+  public async deletePicture(foto: Foto, posicao: number) {
+    this.fotos.splice(posicao, 1);
+
+    Preferences.set({
+      key: this.FOTO_ARMAZENAMENTO,
+      value: JSON.stringify(this.fotos),
+    });
+
+    const nomeArquivo = foto.filepath.substr(foto.filepath.lastIndexOf('/') + 1);
+    await Filesystem.deleteFile({
+      path: nomeArquivo,
+      directory: Directory.Data,
+    });
+  }
+
+  convertBlobToBase64 = (blob: Blob) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = () => {
+        resolve(reader.result);
+      };
+      reader.readAsDataURL(blob);
+    });
+
+}
