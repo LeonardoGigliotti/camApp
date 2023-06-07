@@ -77,7 +77,7 @@ public async carregarFotosSalvas() {
     const fotoCapturada = await Camera.getPhoto({
       resultType: CameraResultType.Uri, // dados baseados em arquivos; oferece o melhor desempenho
       source: CameraSource.Camera, // tirar automaticamente uma nova foto com a câmera
-      quality: 100,
+      quality: 50,
     });
 
     const salvarArquivoFoto = await this.salvarFoto(fotoCapturada);
@@ -154,3 +154,58 @@ public async carregarFotosSalvas() {
     });
 
 }
+========================================================
+Adicionar dentro do home.page.ts
+import { ActionSheetController } from '@ionic/angular';
+import { Foto } from '../models/Foto.interface';
+import { FotoService } from '../services/foto.service';
+
+export class HomePage {
+  constructor(public fotoService: FotoService, public actionSheetController: ActionSheetController) { }
+  async ngOnInit(){
+    await this.fotoService.carregarFotosSalvas();
+} 
+public async showActionSheet(foto: Foto, position: number) {
+  const actionSheet = await this.actionSheetController.create({
+    header: 'Fotos',
+    buttons: [{
+      text: 'Delete',
+      role: 'destructive',
+      icon: 'trash',
+      handler: () => {
+        this.fotoService.deletePicture(foto, position);
+      }
+    }, {
+      text: 'Cancelar',
+      icon: 'close',
+      role: 'cancel',
+      handler: () => {
+        //nothing to do, action sheet is automatically closed
+      }
+    }]
+  });
+  await actionSheet.present();
+}
+
+tirarFoto() {
+  this.fotoService.tirarFoto();
+}
+}
+============================================================
+Adicionar dentro do home.page.html
+<ion-content [fullscreen]="true">
+  <ion-grid>
+    <ion-row>
+      <ion-col size="6" *ngFor="let photo of fotoService.fotos; index as position">
+        <ion-img [src]="photo.webviewPath" (click)="showActionSheet(photo, position)"></ion-img>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+
+  <ion-fab vertical="bottom" hotizontal="end" slot="fixed">
+    <ion-fab-button (click)="tirarFoto()">
+      <ion-icon name="camera"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
+
+</ion-content>
