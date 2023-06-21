@@ -1,5 +1,11 @@
 import { Injectable } from '@angular/core';
-import {Camera, CameraResultType, CameraSource, Photo} from '@capacitor/camera';
+
+import {
+  Camera,
+  CameraResultType,
+  CameraSource,
+  Photo,
+} from '@capacitor/camera';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Preferences } from '@capacitor/preferences';
 import { Foto } from '../models/Foto.interface';
@@ -20,7 +26,7 @@ export class FotoService {
     const listaFotos = await Preferences.get({ key: this.FOTO_ARMAZENAMENTO });
     this.fotos = JSON.parse(listaFotos.value as string) || [];
 
-    // Se não estiver rodando no navegador...
+    // Se estiver rodando no navegador...
     if (!this.platform.is('hybrid')) {
       // Exibir a foto lendo-a no formato base64
       for (let foto of this.fotos) {
@@ -41,7 +47,7 @@ export class FotoService {
     const fotoCapturada = await Camera.getPhoto({
       resultType: CameraResultType.Uri, // dados baseados em arquivos; oferece o melhor desempenho
       source: CameraSource.Camera, // tirar automaticamente uma nova foto com a câmera
-      quality: 50, // Deixar em 50 para não gerar um arquivo muito grande em cameras boas.
+      quality: 100,
     });
 
     const salvarArquivoFoto = await this.salvarFoto(fotoCapturada);
@@ -132,5 +138,31 @@ export class FotoService {
       };
       reader.readAsDataURL(blob);
     });
+
+  async getBlob(foto: Foto) {
+    // Busca o arquivo no File System
+    const file = await this.readFile(foto);
+    // Converte o arquivo para Blob
+    const response = await fetch(file);
+    // Retorna o Blob
+    return await response.blob();
+  }
+
+  private async readFile(foto: Foto) {
+    // If running on the web...
+    if (!this.platform.is('hybrid')) {
+      // Display the photo by reading into base64 format
+      const readFile = await Filesystem.readFile({
+        path: foto.filepath,
+        directory: Directory.Data,
+      });
+
+      // Web platform only: Load the photo as base64 data
+      foto.webviewPath = `data:image/jpeg;base64,${readFile.data}`;
+    }
+
+    return foto.webviewPath as string;
+  }
+
 
 }
